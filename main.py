@@ -13,10 +13,10 @@ def majorityCnt(classlist):
     return sortedClassCount[0][0]
 
 
-def entropy(dataset):
-    n = len(dataset)
+def entropy(data):
+    n = len(data)
     labels = {}
-    for record in dataset:
+    for record in data:
         label = record[-1]
         if label not in labels.keys():
             labels[label] = 0
@@ -28,9 +28,9 @@ def entropy(dataset):
     return ent
 
 
-def splitDataset(dataset, nclom, value):
+def splitDataset(data, nclom, value):
     retDataSet = []
-    for record in dataset:
+    for record in data:
         if record[nclom] == value:
             reducedRecord = record[:nclom]
             reducedRecord.extend(record[nclom + 1:])
@@ -38,18 +38,18 @@ def splitDataset(dataset, nclom, value):
     return retDataSet
 
 
-def chooseBestFeatureToSplit(dataset):
-    numberFeature = len(dataset[0]) - 1
-    baseEntropy = entropy(dataset)
+def chooseBestFeatureToSplit(data):
+    numberFeature = len(data[0]) - 1
+    baseEntropy = entropy(data)
     bestInfoGain = 0.0
     bestFeature = -1
     for i in range(numberFeature):
-        featureList = [x[i] for x in dataset]
+        featureList = [x[i] for x in data]
         uniqueValues = set(featureList)
         newEntropy = 0.0
         for value in uniqueValues:
-            subDataset = splitDataset(dataset, i, value)
-            prob = len(subDataset) / float(len(dataset))
+            subDataset = splitDataset(data, i, value)
+            prob = len(subDataset) / float(len(data))
             newEntropy += prob * entropy(subDataset)
         infoGain = baseEntropy - newEntropy
         if infoGain > bestInfoGain:
@@ -58,82 +58,88 @@ def chooseBestFeatureToSplit(dataset):
     return bestFeature
 
 
-def buildTree(dataset, labels):
-    classlist = [x[-1] for x in dataset]
+def buildTree(data, labels):
+    classlist = [x[-1] for x in data]
     if classlist.count(classlist[0]) == len(classlist):
         return classlist[0]
     if len(classlist) == 1:
         return majorityCnt(classlist)
-    bestFeature = chooseBestFeatureToSplit(dataset)
+    bestFeature = chooseBestFeatureToSplit(data)
     bestFeatureLabel = labels[bestFeature]
-    tree = {bestFeatureLabel: {}}
+    tree = {"Label": bestFeatureLabel}
     del (labels[bestFeature])
-    featValues = [x[bestFeature] for x in dataset]
+    featValues = [x[bestFeature] for x in data]
     uniqueVals = set(featValues)
     for value in uniqueVals:
         subLabels = labels[:]
-        tree[bestFeatureLabel][value] = buildTree(splitDataset(dataset, bestFeature, value), subLabels)
+        tree[value] = buildTree(splitDataset(data, bestFeature, value), subLabels)
     return tree
 
 
-def classify(tree, labels, testvec):
-    firstStr = tree.keys()[0]
-    secondDict = tree[firstStr]
-    featIndex = labels.index(firstStr)
-    for key in secondDict.keys():
-        if testvec[featIndex] == key:
-            if type(secondDict[key]).__name__ == 'dict':
-                classLabel = classify(secondDict[key], labels, testvec)
+def classify(tree, labels, record):
+    label = tree['Label']
+    currentNode = {}
+    for key, value in tree.iteritems():
+        if not key == 'Label':
+            currentNode[key] = value
+    currColumn = labels.index(label)
+    for key, value in currentNode.iteritems():
+        if record[currColumn] == key:
+            if type(value) is dict:
+                result = classify(value, labels, record)
             else:
-                classLabel = secondDict[key]
+                result = value
     try:
-        return classLabel
+        return result
     except:
-        return 1
+        return 'error'
 
 
-def printTree(tree, tabs):
+def printTree(tree, tabs, tabsDone = True, str = ''):
     if type(tree) is dict:
         for key, value in tree.iteritems():
-            for i in range(0, tabs):
-                print "\t",
-            print key, ":"
-            printTree(value, tabs + 1)
+            if not key == "Label":
+                if tabsDone == False:
+                    str = "\t\t\t" * tabs
+                    str += "\t  "
+                    tabsDone = True
+                else:
+                    str += "-%4s-" % (tree["Label"])
+                str += "+-%2s->" % (key)
+                printTree(value, tabs + 1, tabsDone, str)
+                tabsDone = False
+
     else:
-        for i in range(0, tabs):
-            print "\t",
-        print tree
+        print "%s%2s" % (str, tree)
 
 
 fs = open("dtree.data")
-dataset = []
+data = []
 for line in fs:
     lineSplit = split(line[:-1], "\t")
-    #print lineSplit
-    dataset.append([float(value) for value in lineSplit])
+    data.append([value for value in lineSplit])
 fs.close()
 
-nfeature = len(dataset[0])
+nfeature = len(data[0])
 labels = ["att" + str(i) for i in range(1, nfeature)]
 labels2 = [x for x in labels]
-tree = buildTree(dataset, labels)
+tree = buildTree(data, labels)
 printTree(tree, 0)
-print "test data"
+
 try:
     fs = open("dtreeTest.data")
-    datasetTest = []
+    testData = []
     for line in fs:
         lineSplit = split(line[:-1], "\t")
-        #print lineSplit
-        datasetTest.append([float(value) for value in lineSplit])
+        testData.append([value for value in lineSplit])
     fs.close()
 
     nPos = 0
-    for r in datasetTest:
+    for r in testData:
         ret = classify(tree, labels2, r)
         if ret == r[-1]:
             nPos += 1
-    ntest = len(datasetTest)
+    ntest = len(testData)
     print "The pass rate is " + str(nPos / float(ntest))
 except:
     pass
