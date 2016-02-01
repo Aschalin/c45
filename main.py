@@ -100,8 +100,8 @@ def printTree(tree, tabs, tabsDone = True, str = ''):
         for key, value in tree.iteritems():
             if not key == "Label":
                 if tabsDone == False:
-                    str = "\t\t\t" * tabs
-                    str += "\t  "
+                    str = "    " * tabs * 3
+                    str += " " * 6
                     tabsDone = True
                 else:
                     str += "-%4s-" % (tree["Label"])
