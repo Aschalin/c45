@@ -94,23 +94,28 @@ def classify(tree, labels, record):
     except:
         return 'error'
 
+def sprint(text, length, char):
+    dif = length - len(text)
+    begin = dif/2
+    end = dif - begin
+    return char * begin + str(text) + char * end
 
 def printTree(tree, tabs, tabsDone = True, str = ''):
     if type(tree) is dict:
         for key, value in tree.iteritems():
             if not key == "Label":
                 if tabsDone == False:
-                    str = "    " * tabs * 3
-                    str += " " * 6
+                    str = " " * tabs * (6 + maxDataLen + maxLabelLen)
+                    str += " " * (2 + maxLabelLen)
                     tabsDone = True
                 else:
-                    str += "-%4s-" % (tree["Label"])
-                str += "+-%2s->" % (key)
+                    str += "-%s-" % sprint(tree["Label"], maxLabelLen, ' ')
+                str += "+-%s->" % sprint(key, maxDataLen, '-')
                 printTree(value, tabs + 1, tabsDone, str)
                 tabsDone = False
 
     else:
-        print "%s%2s" % (str, tree)
+        print "%s %s" % (str, tree)
 
 
 fs = open("dtree.data")
@@ -120,12 +125,26 @@ for line in fs:
     data.append([value for value in lineSplit])
 fs.close()
 
-nfeature = len(data[0])
-labels = ["att" + str(i) for i in range(1, nfeature)]
+labels = [l for l in data[0]]
+del data[0]
+
+maxDataLen = 0
+for r in data:
+    for d in r:
+        if len(d) > maxDataLen:
+            maxDataLen = len(d)
+maxLabelLen = 0
+for d in labels:
+    if len(d) > maxLabelLen:
+        maxLabelLen = len(d)
+
+
+#print labels
+#print data
 labels2 = [x for x in labels]
 tree = buildTree(data, labels)
 printTree(tree, 0)
-
+print maxDataLen
 try:
     fs = open("dtreeTest.data")
     testData = []
@@ -139,6 +158,9 @@ try:
         ret = classify(tree, labels2, r)
         if ret == r[-1]:
             nPos += 1
+        else:
+            #pass
+            print str(r) + '-' + str(ret)
     ntest = len(testData)
     print "The pass rate is " + str(nPos / float(ntest))
 except:
